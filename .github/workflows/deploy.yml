@@ -76,19 +76,19 @@ jobs:
             if [[ "\$GITHUB_REF" == *"frontend"* ]]; then
               echo "🔁 Deploying Frontend only"
               docker rm -f frontend-app || true
-              docker run -d --name frontend-app -p 80:80 "\$FRONTEND_IMAGE"
+              docker run -d --name frontend-app --network microservices-net -p 80:80 "\$FRONTEND_IMAGE"
 
             elif [[ "\$GITHUB_REF" == *"backend"* ]]; then
               echo "🔁 Deploying Backend only"
               docker rm -f backend-app || true
-              docker run -d --name backend-app -p 5000:5000 "\$BACKEND_IMAGE"
+              docker run -d --name backend-app --network microservices-net -p 5000:5000 "\$BACKEND_IMAGE"
 
             else
               echo "🔁 Deploying BOTH Frontend and Backend"
               docker rm -f frontend-app || true
-              docker run -d --name frontend-app -p 80:80 "\$FRONTEND_IMAGE"
+              docker run -d --name frontend-app --network microservices-net -p 80:80 "\$FRONTEND_IMAGE"
               docker rm -f backend-app || true
-              docker run -d --name backend-app -p 5000:5000 "\$BACKEND_IMAGE"
+              docker run -d --name backend-app --network microservices-net -p 5000:5000 "\$BACKEND_IMAGE"
             fi
             docker ps -a
           EOF
