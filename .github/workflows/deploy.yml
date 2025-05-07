@@ -62,33 +62,31 @@ jobs:
           echo "🔍 Debugging image reference"
           echo "Frontend image: ${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME_FRONTEND:$IMAGE_TAG"
           echo "Backend image: ${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME_BACKEND:$IMAGE_TAG"
-          
           ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<EOF
             set -e
             echo "🚀 Running Deployment Script on EC2"
-            echo "Commit Message: ${GITHUB_REF}"
+            echo "Commit Message: \$GITHUB_REF"
 
             # Define variables inside SSH session
-            IMAGE_NAME_FRONTEND="${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME_FRONTEND:$IMAGE_TAG"
-            IMAGE_NAME_BACKEND="${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME_BACKEND:$IMAGE_TAG"
+            FRONTEND_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME_FRONTEND:$IMAGE_TAG"
+            BACKEND_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME_BACKEND:$IMAGE_TAG"
 
-            if [[ "${GITHUB_REF}" == *"frontend"* ]]; then
+            if [[ "\$GITHUB_REF" == *"frontend"* ]]; then
               echo "🔁 Deploying Frontend only"
               docker rm -f frontend-app || true
-              docker run -d --name frontend-app -p 80:80 "$IMAGE_NAME_FRONTEND"
+              docker run -d --name frontend-app -p 80:80 "\$FRONTEND_IMAGE"
 
-            elif [[ "${GITHUB_REF}" == *"backend"* ]]; then
+            elif [[ "\$GITHUB_REF" == *"backend"* ]]; then
               echo "🔁 Deploying Backend only"
               docker rm -f backend-app || true
-              docker run -d --name backend-app -p 5000:5000 "$IMAGE_NAME_BACKEND"
+              docker run -d --name backend-app -p 5000:5000 "\$BACKEND_IMAGE"
 
             else
               echo "🔁 Deploying BOTH Frontend and Backend"
               docker rm -f frontend-app || true
-              docker run -d --name frontend-app -p 80:80 "$IMAGE_NAME_FRONTEND"
-
+              docker run -d --name frontend-app -p 80:80 "\$FRONTEND_IMAGE"
               docker rm -f backend-app || true
-              docker run -d --name backend-app -p 5000:5000 "$IMAGE_NAME_BACKEND"
+              docker run -d --name backend-app -p 5000:5000 "\$BACKEND_IMAGE"
             fi
             docker ps -a
           EOF
