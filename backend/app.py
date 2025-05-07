@@ -24,11 +24,13 @@ conn = psycopg2.connect(
 
 @app.post("/submit")
 def submit(username: str = Form(...), email: str = Form(...)):
+    conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
-        INSERT INTO users (username, email) 
+        INSERT INTO users (username, email)
         VALUES (%s, %s)
     """, (username, email))
     conn.commit()
     cur.close()
+    conn.close()
     return {"message": "User saved successfully!"}
