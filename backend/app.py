@@ -50,8 +50,12 @@ def submit(username: str = Form(...), email: str = Form(...)):
         VALUES (%s, %s)
     """, (username, email))
     conn.commit()
+    cur.execute("SELECT id, username, email FROM users")
+    rows = cur.fetchall()
+    user_list = [{"id": row[0], "username": row[1], "email": row[2]} for row in rows]
     cur.close()
     conn.close()
-    
-    return {"message": "User saved successfully!"}
 
+    
+    
+    return {"message": "User saved successfully!", "users": user_list}
