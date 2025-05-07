@@ -1,6 +1,7 @@
-from fastapi import FastAPI, Form
+kfrom fastapi import FastAPI, Form
 from fastapi.middleware.cors import CORSMiddleware
 import psycopg2
+from psycopg2 import OperationalError
 
 app = FastAPI()
 
@@ -13,18 +14,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Connect to PostgreSQL hosted on AWS
-conn = psycopg2.connect(
-    host="database-1.ch2cu2qaa4oh.ap-south-1.rds.amazonaws.com",
-    port="5432",
-    database="fullstack",
-    user="daud",
-    password="daud3738"
-)
+# Database connection settings
+DB_SETTINGS = {
+    "host": "database-1.ch2cu2qaa4oh.ap-south-1.rds.amazonaws.com",
+    "port": "5432",
+    "database": "fullstack",
+    "user": "daud",
+    "password": "daud3738"
+}
+
+def get_db_connection():
+    """Establish a new database connection."""
+    try:
+        conn = psycopg2.connect(
+            host=DB_SETTINGS['host'],
+            port=DB_SETTINGS['port'],
+            database=DB_SETTINGS['database'],
+            user=DB_SETTINGS['user'],
+            password=DB_SETTINGS['password']
+        )
+        return conn
+    except OperationalError as e:
+        print(f"Error while connecting to PostgreSQL: {e}")
+        return None
 
 @app.post("/submit")
 def submit(username: str = Form(...), email: str = Form(...)):
     conn = get_db_connection()
+    if conn is None:
+        return {"message": "Database connection failed!"}
+
     cur = conn.cursor()
     cur.execute("""
         INSERT INTO users (username, email)
@@ -33,4 +52,6 @@ def submit(username: str = Form(...), email: str = Form(...)):
     conn.commit()
     cur.close()
     conn.close()
+    
     return {"message": "User saved successfully!"}
+
