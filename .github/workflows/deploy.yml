@@ -79,7 +79,13 @@ jobs:
             FRONTEND_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME_FRONTEND:$IMAGE_TAG
             BACKEND_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME_BACKEND:$IMAGE_TAG
 
-            if [[ "$COMMIT_MSG" == *"frontend"* ]]; then
+            if [[ "$COMMIT_MSG" == *"frontend"* && "$COMMIT_MSG" == *"backend"* ]]; then
+              echo "🔁 Deploying BOTH Frontend and Backend"
+              docker rm -f frontend-app || true
+              docker run -d --name frontend-app --network microservices-net -p 80:80 \$FRONTEND_IMAGE
+              docker rm -f backend-app || true
+              docker run -d --name backend-app --network microservices-net -p 5000:5000 \$BACKEND_IMAGE
+            elif [[ "$COMMIT_MSG" == *"frontend"* ]]; then
               echo "🔁 Deploying Frontend only"
               docker rm -f frontend-app || true
               docker run -d --name frontend-app --network microservices-net -p 80:80 \$FRONTEND_IMAGE
@@ -88,10 +94,6 @@ jobs:
               docker rm -f backend-app || true
               docker run -d --name backend-app --network microservices-net -p 5000:5000 \$BACKEND_IMAGE
             else
-              echo "🔁 Deploying BOTH Frontend and Backend"
-              docker rm -f frontend-app || true
-              docker run -d --name frontend-app --network microservices-net -p 80:80 \$FRONTEND_IMAGE
-              docker rm -f backend-app || true
-              docker run -d --name backend-app --network microservices-net -p 5000:5000 \$BACKEND_IMAGE
+              echo "🟡 No recognizable service found to deploy"
             fi
           EOF
