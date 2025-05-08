@@ -21,12 +21,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 🔍 Get latest commit message
-        id: commit_msg
+      - name: 🔍 Extract last commit message
+        id: get_commit
         run: |
-          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
-          echo "Commit message: $COMMIT_MESSAGE"
-          echo "commit_msg=$COMMIT_MESSAGE" >> $GITHUB_OUTPUT
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "commit_msg=$COMMIT_MSG" >> $GITHUB_OUTPUT
 
       - name: 🧠 Cache Docker layers
         uses: actions/cache@v3
@@ -40,9 +39,9 @@ jobs:
         run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
       - name: 📦 Build and Push Frontend Docker image
-        if: contains(steps.commit_msg.outputs.commit_msg, 'frontend') || (!contains(steps.commit_msg.outputs.commit_msg, 'frontend') && !contains(steps.commit_msg.outputs.commit_msg, 'backend'))
+        if: contains(steps.get_commit.outputs.commit_msg, 'frontend') || (!contains(steps.get_commit.outputs.commit_msg, 'frontend') && !contains(steps.get_commit.outputs.commit_msg, 'backend'))
         run: |
-          echo "✅ Building Frontend"
+          echo "Building Frontend"
           docker buildx create --use || true
           docker buildx build \
             --build-arg BUILDKIT_INLINE_CACHE=1 \
@@ -52,9 +51,9 @@ jobs:
             --push ./frontend
 
       - name: 📦 Build and Push Backend Docker image
-        if: contains(steps.commit_msg.outputs.commit_msg, 'backend') || (!contains(steps.commit_msg.outputs.commit_msg, 'frontend') && !contains(steps.commit_msg.outputs.commit_msg, 'backend'))
+        if: contains(steps.get_commit.outputs.commit_msg, 'backend') || (!contains(steps.get_commit.outputs.commit_msg, 'frontend') && !contains(steps.get_commit.outputs.commit_msg, 'backend'))
         run: |
-          echo "✅ Building Backend"
+          echo "Building Backend"
           docker buildx create --use || true
           docker buildx build \
             --build-arg BUILDKIT_INLINE_CACHE=1 \
@@ -70,34 +69,31 @@ jobs:
 
       - name: 🚀 Deploy to EC2
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<'EOF'
-            set -e
+          COMMIT_MSG="${{ steps.get_commit.outputs.commit_msg }}"
+          echo "Commit message is: $COMMIT_MSG"
 
-            echo "🚀 Deployment started"
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<EOF
+            set -e
+            echo "🚀 Running Deployment Script on EC2"
 
             docker network inspect microservices-net > /dev/null 2>&1 || docker network create microservices-net
 
             FRONTEND_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME_FRONTEND:$IMAGE_TAG"
             BACKEND_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME_BACKEND:$IMAGE_TAG"
 
-            COMMIT_MESSAGE=$(git log -1 --pretty=%B)
-            echo "🔍 Commit Message: \$COMMIT_MESSAGE"
-
-            if [[ "\$COMMIT_MESSAGE" == *"frontend"* ]]; then
+            if [[ "$COMMIT_MSG" == *"frontend"* ]]; then
               echo "🔁 Deploying Frontend only"
               docker rm -f frontend-app || true
-              docker run -d --name frontend-app --network microservices-net -p 80:80 "\$FRONTEND_IMAGE"
-            elif [[ "\$COMMIT_MESSAGE" == *"backend"* ]]; then
+              docker run -d --name frontend-app --network microservices-net -p 80:80 "$FRONTEND_IMAGE"
+            elif [[ "$COMMIT_MSG" == *"backend"* ]]; then
               echo "🔁 Deploying Backend only"
               docker rm -f backend-app || true
-              docker run -d --name backend-app --network microservices-net -p 5000:5000 "\$BACKEND_IMAGE"
+              docker run -d --name backend-app --network microservices-net -p 5000:5000 "$BACKEND_IMAGE"
             else
               echo "🔁 Deploying BOTH Frontend and Backend"
               docker rm -f frontend-app || true
-              docker run -d --name frontend-app --network microservices-net -p 80:80 "\$FRONTEND_IMAGE"
+              docker run -d --name frontend-app --network microservices-net -p 80:80 "$FRONTEND_IMAGE"
               docker rm -f backend-app || true
-              docker run -d --name backend-app --network microservices-net -p 5000:5000 "\$BACKEND_IMAGE"
+              docker run -d --name backend-app --network microservices-net -p 5000:5000 "$BACKEND_IMAGE"
             fi
-
-            docker ps -a
           EOF
