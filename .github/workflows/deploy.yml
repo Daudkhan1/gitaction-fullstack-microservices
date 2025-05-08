@@ -12,6 +12,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v3
@@ -75,22 +76,22 @@ jobs:
 
             docker network inspect microservices-net > /dev/null 2>&1 || docker network create microservices-net
 
-            FRONTEND_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME_FRONTEND:$IMAGE_TAG"
-            BACKEND_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME_BACKEND:$IMAGE_TAG"
+            FRONTEND_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME_FRONTEND:$IMAGE_TAG
+            BACKEND_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME_BACKEND:$IMAGE_TAG
 
             if [[ "$COMMIT_MSG" == *"frontend"* ]]; then
               echo "🔁 Deploying Frontend only"
               docker rm -f frontend-app || true
-              docker run -d --name frontend-app --network microservices-net -p 80:80 "$FRONTEND_IMAGE"
+              docker run -d --name frontend-app --network microservices-net -p 80:80 \$FRONTEND_IMAGE
             elif [[ "$COMMIT_MSG" == *"backend"* ]]; then
               echo "🔁 Deploying Backend only"
               docker rm -f backend-app || true
-              docker run -d --name backend-app --network microservices-net -p 5000:5000 "$BACKEND_IMAGE"
+              docker run -d --name backend-app --network microservices-net -p 5000:5000 \$BACKEND_IMAGE
             else
               echo "🔁 Deploying BOTH Frontend and Backend"
               docker rm -f frontend-app || true
-              docker run -d --name frontend-app --network microservices-net -p 80:80 "$FRONTEND_IMAGE"
+              docker run -d --name frontend-app --network microservices-net -p 80:80 \$FRONTEND_IMAGE
               docker rm -f backend-app || true
-              docker run -d --name backend-app --network microservices-net -p 5000:5000 "$BACKEND_IMAGE"
+              docker run -d --name backend-app --network microservices-net -p 5000:5000 \$BACKEND_IMAGE
             fi
           EOF
