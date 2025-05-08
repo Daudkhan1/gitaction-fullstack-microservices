@@ -3,9 +3,6 @@ name: CI/CD with Microservices (Frontend and Backend)
 on:
   push:
     branches: [ main ]
-    paths:
-      - 'frontend/**'
-      - 'backend/**'
 
 env:
   IMAGE_NAME_FRONTEND: frontend-app
